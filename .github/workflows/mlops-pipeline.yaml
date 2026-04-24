@@ -1,0 +1,82 @@
+name: MLOps Pipeline
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  S3_BUCKET: mlops123-299029453147-us-east-1-an
+  MODEL_PATH: models/churn_model.pkl
+  MODEL_S3_PATH: models/churn_model.pkl
+
+jobs:
+  train-and-deploy:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+    # 1. Checkout
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    # 2. Install Python
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    # 3. Install UV (faster than pip)
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    # 4. Install dependencies
+    - name: Install dependencies
+      run: |
+        uv pip install -r requirements.txt
+
+    # 5. Generate dataset
+    - name: Generate dataset
+      run: python generate_data.py
+
+    # 6. Train model
+    - name: Train model
+      run: python train.py
+
+    # 7. Configure AWS
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    # 8. Upload model to S3
+    - name: Push model to S3
+      run: |
+        aws s3 cp $MODEL_PATH s3://${{ env.S3_BUCKET }}/$MODEL_S3_PATH
+        echo "✅ Model uploaded to S3"
+
+    # 9. Update inference.yaml dynamically
+    - name: Update inference.yaml
+      run: |
+        MODEL_URI="s3://${{ env.S3_BUCKET }}/$MODEL_S3_PATH"
+        sed -i "s|storageUri: .*|storageUri: $MODEL_URI|g" k8s/inference.yaml
+
+    # 10. Commit changes (GitOps trigger)
+    - name: Commit updated inference.yaml
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+        git add k8s/inference.yaml
+
+        git commit -m "Update model S3 path [skip ci]" || echo "No changes"
+
+        git push || echo "Nothing to push"
+
