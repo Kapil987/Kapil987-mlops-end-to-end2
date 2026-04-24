@@ -38,7 +38,7 @@ jobs:
     # 4. Install dependencies
     - name: Install dependencies
       run: |
-        uv pip install -r requirements.txt
+        uv pip install --no-cache-dir --system -r requirements.txt
 
     # 5. Generate dataset
     - name: Generate dataset
