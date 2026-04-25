@@ -188,7 +188,7 @@ kubectl port-forward -n churn-model service/churn-predictor-predictor-default 80
 ```
 
 ```bash
-curl -X POST http://localhost:8080/v1/models/churn-predictor:predict \
+curl -X POST http://localhost:8000/v1/models/churn-predictor:predict \
   -H "Content-Type: application/json" \
   -d '{
     "instances": [[45, 24, 79.99, 1920.00, 3]]
@@ -196,7 +196,7 @@ curl -X POST http://localhost:8080/v1/models/churn-predictor:predict \
 ```
 
 ```bash
-curl -X POST http://localhost:8090/v1/models/churn-predictor:predict \
+curl -X POST http://localhost:8000/v1/models/churn-predictor:predict \
   -H "Content-Type: application/json" \
   -d '{
     "instances": [[69,64,30.142082844921653,2933.852650794406,7]]
@@ -294,7 +294,38 @@ curl -X POST http://localhost:8000/predict \
   "churn_probability": 0.73
 }
 ```
+### ✅ What does `churn: 1` mean?
 
+* Your model is doing **binary classification**
+
+  * `1` → Customer **will churn (leave)**
+  * `0` → Customer **will NOT churn**
+* This is standard in churn ML models
+
+👉 So:
+
+```
+"churn": 1
+```
+
+➡️ Model predicts this customer is **likely to leave**
+
+---
+
+### ✅ What is `churn_probability: 0.52`?
+
+* This is the **confidence score**
+* Model outputs probability using `predict_proba()`
+
+👉 Meaning:
+
+```
+"churn_probability": 0.52
+```
+
+➡️ There is **52% chance customer will churn**
+
+* ML models assign probabilities to each class
 ---
 
 ## 🧩 Core Components
