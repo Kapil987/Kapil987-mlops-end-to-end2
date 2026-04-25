@@ -4,7 +4,7 @@ metadata:
   name: churn-predictor
   namespace: ml
   labels:
-  model-version: "beta"
+    model-version: "beta"
 spec:
   predictor:
     serviceAccountName: sa-s3-access

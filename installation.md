@@ -5,23 +5,31 @@
 3. Export the credentials in your AWS CLI by running "aws configure"
 4. Create a s3 bucket
 5. Create EC2 machine (Ubuntu) & add Security groups 5000 port
-
+6. You may add below in ~/.bashrc , once updated you need to re-enter the terminel or bash
+```bash
+alias k='kubectl'
+```
 Run the following command on EC2 machine
 ```bash
 sudo apt update && sudo apt upgrade -y;
 sudo apt install unzip net-tools -y ;
+```
+
 ## Install aws CLI
+```bash
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
+```
 
 ## Then set aws credentials
 aws configure
 
 ## Install UV
+```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 exit bash, then re-enter
-
+```
 
 ## Install docker
 https://docs.docker.com/engine/install/ubuntu/
@@ -65,11 +73,98 @@ chmod +x kubectl
 mkdir -p ~/.local/bin
 mv ./kubectl ~/.local/bin/kubectl
 
+## Git clone
+- git clone https://github.com/Kapil987/Kapil987-mlops-end-to-end2.git
+- cd kind
+
 ## Kind commands
-kind create cluster --config kind-config.yml
-kind load docker-image kapilmyapp:latest --name demo1
+kind create cluster --config cluster-config.yml
 kind get clusters
-kind delete clusters clusterName
+<!-- kind delete clusters clusterName -->
+
+### Install Helm
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4
+chmod 700 get_helm.sh
+./get_helm.sh
+
+#  latest available version
+curl -s https://api.github.com/repos/kserve/kserve/releases/latest | grep -oP '"tag_name": "\K[^"]+'
+
+### Install Cert Manager
+
+```bash
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.20.0/cert-manager.yaml
+# kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+
+k get pods -n cert-manager # Make sure the pods are running
+```
+
+### Install KServe CRDs
+<!-- helm uninstall kserve -n kserve 2>/dev/null
+helm uninstall kserve-crd -n kserve
+kubectl get crds | grep kserve.io | awk '{print $1}' | xargs kubectl delete crd -->
+
+```bash
+kubectl create namespace kserve
+
+helm install kserve-crd oci://ghcr.io/kserve/charts/kserve-crd \
+  --version v0.16.0 \
+  -n kserve \
+  --wait
+
+helm list -A
+
+```
+
+### Install KServe controller
+```bash
+helm upgrade --install kserve oci://ghcr.io/kserve/charts/kserve \
+  --version v0.16.0 \
+  -n kserve \
+  --set kserve.controller.deploymentMode=RawDeployment
+
+kubectl get pods -n kserve -w
+
+Ensure below
+kserve-controller-manager → 2/2 Running
+kserve-webhook-server → Running (if exists)
+
+kubectl get endpoints -n kserve
+```
+
+
+### KServe Deployment
+
+```bash
+
+kubectl apply -f k8s/serviceaccount.yaml
+kubectl apply -f k8s/inference.yaml
+
+kubectl get inferenceservice -n churn-model
+kubectl get inferenceservice churn-predictor -n churn-model -w
+```
+
+⚠️ Ensure AWS credentials are updated in `serviceaccount.yaml`.
+
+
+## 🔁 GitOps with ArgoCD
+
+```bash
+kubectl create namespace argocd
+
+kubectl apply -n argocd \
+  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+kubectl apply -f argocd/application.yaml
+
+kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d
+```
+
+## Add secrets in github
+images/1.add_secrets.png
 
 ## Kubectl commands
 kubectl apply -f deployment.yaml
@@ -113,4 +208,23 @@ NAME            TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
 flask-service   NodePort    10.96.29.170   <none>        80:30007/TCP   2m2s
 kubernetes      ClusterIP   10.96.0.1      <none>        443/TCP        33m
 ubuntu@ip-172-31-26-169:~/15_Docker_Kubernetes/app$
+
+- Error
+ubuntu@ip-172-31-30-0:~$ helm upgrade --install kserve oci://ghcr.io/kserve/charts/kserve \
+  --version v0.16.0 \
+  -n kserve \
+  --set kserve.controller.deploymentMode=RawDeployment
+Release "kserve" does not exist. Installing it now.
+Pulled: ghcr.io/kserve/charts/kserve:v0.16.0
+Digest: sha256:46d78a58fff65902213a7254ec16520286baa81d33340c4a03f5263d846e2124
+Error: Internal error occurred: failed calling webhook "clusterservingruntime.kserve-webhook-server.validator": failed to call webhook: Post "https://kserve-webhook-server-service.kserve.svc:443/validate-serving-kserve-io-v1alpha1-clusterservingruntime?timeout=10s": dial tcp 10.96.133.27:443: connect: connection refused
+Internal error occurred: failed calling webhook "clusterservingruntime.kserve-webhook-server.validator": failed to call webhook: Post "https://kserve-webhook-server-service.kserve.svc:443/validate-serving-kserve-io-v1alpha1-clusterservingruntime?timeout=10s": dial tcp 10.96.133.27:443: connect: connection refused
+Internal error occurred: failed calling webhook "clusterservingruntime.kserve-webhook-server.validator": failed to call webhook: Post "https://kserve-webhook-server-service.kserve.svc:443/validate-serving-kserve-io-v1alpha1-clusterservingruntime?timeout=10s": dial tcp 10.96.133.27:443: connect: connection refused
+ubuntu@ip-172-31-30-0:~$
+
+- sol: try installing again after 1 minute
+
+- if Error while replacing the inferance.yaml
+yq e '.metadata.labels."model-version" = env(MODEL_VERSION)' -i k8s/inference.yaml
+
 
