@@ -101,7 +101,7 @@ churn-model/
 ### 1️⃣ Initial Setup
 
 ```bash
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 
 python generate_data.py
 python train.py

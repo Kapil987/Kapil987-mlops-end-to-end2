@@ -9,7 +9,6 @@ env:
   AWS_REGION: us-east-1
   S3_BUCKET: mlops123-299029453147-us-east-1-an
   MODEL_PATH: models/churn_model.pkl
-  MODEL_S3_PATH: models/churn_model.pkl
 
 jobs:
   train-and-deploy:
@@ -23,13 +22,13 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # 2. Install Python
+    # 2. Setup Python
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
-    # 3. Install UV (faster than pip)
+    # 3. Install uv
     - name: Install uv
       run: |
         curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -56,19 +55,32 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
 
-    # 8. Upload model to S3
+    # 8. Generate model version (BEST PRACTICE)
+    - name: Generate model version
+      run: |
+        MODEL_VERSION=$(git rev-parse --short ${{ github.sha }})
+        echo "MODEL_VERSION=$MODEL_VERSION" >> $GITHUB_ENV
+
+    # 9. Upload versioned model
     - name: Push model to S3
       run: |
-        aws s3 cp $MODEL_PATH s3://${{ env.S3_BUCKET }}/$MODEL_S3_PATH
-        echo "✅ Model uploaded to S3"
+        MODEL_NAME=churn_model-${MODEL_VERSION}.pkl
+        aws s3 cp $MODEL_PATH s3://${{ env.S3_BUCKET }}/models/$MODEL_NAME
+        echo "MODEL_NAME=$MODEL_NAME" >> $GITHUB_ENV
+        echo "✅ Model uploaded: $MODEL_NAME"
 
-    # 9. Update inference.yaml dynamically
+    # 10. Update inference.yaml
     - name: Update inference.yaml
       run: |
-        MODEL_URI="s3://${{ env.S3_BUCKET }}/$MODEL_S3_PATH"
+        MODEL_URI="s3://${{ env.S3_BUCKET }}/models/$MODEL_NAME"
+
+        # update storageUri
         sed -i "s|storageUri: .*|storageUri: $MODEL_URI|g" k8s/inference.yaml
 
-    # 10. Commit changes (GitOps trigger)
+        # update model version label
+        sed -i "s|model-version: .*|model-version: \"$MODEL_VERSION\"|g" k8s/inference.yaml
+
+    # 11. Commit changes
     - name: Commit updated inference.yaml
       run: |
         git config --local user.email "action@github.com"
@@ -76,7 +88,6 @@ jobs:
 
         git add k8s/inference.yaml
 
-        git commit -m "Update model S3 path [skip ci]" || echo "No changes"
+        git commit -m "Update model version ${MODEL_VERSION} [skip ci]" || echo "No changes"
 
         git push || echo "Nothing to push"
-
