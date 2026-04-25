@@ -1,20 +1,30 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: churn-model
+  name: ml
   namespace: argocd
 spec:
   project: default
+
   source:
     repoURL: https://github.com/Kapil987/Kapil987-mlops-end-to-end2.git
-    targetRevision: HEAD
+    targetRevision: main
     path: k8s
+
   destination:
     server: https://kubernetes.default.svc
-    namespace: churn-model
+    namespace: ml
+
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-    - CreateNamespace=true
+      - CreateNamespace=true
+      - RespectIgnoreDifferences=true
+
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      jsonPointers:
+        - /data   # ignore secret values
