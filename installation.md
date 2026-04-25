@@ -137,14 +137,44 @@ kubectl get endpoints -n kserve
 
 ```bash
 
-kubectl apply -f k8s/serviceaccount.yaml
-kubectl apply -f k8s/inference.yaml
+kubectl apply -f k8s/1.serviceaccount.yaml
+kubectl apply -f k8s/2.inference.yaml
 
-kubectl get inferenceservice -n churn-model
-kubectl get inferenceservice churn-predictor -n churn-model -w
+kubectl get inferenceservice -n ml
+kubectl get inferenceservice churn-predictor -n ml -w
 ```
 
-⚠️ Ensure AWS credentials are updated in `serviceaccount.yaml`.
+⚠️ Ensure AWS credentials are updated in `3.secret.yaml`. Because we are updating secrets locally
+it will take around 1 minute for InferenceService to get URL
+
+```bash
+ubuntu@ip-172-31-30-0:~/Kapil987-mlops-end-to-end2/k8s$ k get InferenceService -n ml
+NAME              URL                                     READY   PREV   LATEST   PREVROLLEDOUTREVISION   LATESTREADYREVISION   AGE
+churn-predictor   http://churn-predictor-ml.example.com   True       
+```
+
+
+### Test Inference
+
+```bash
+kubectl port-forward -n ml service/churn-predictor-predictor 8080:80 --address 0.0.0.0
+```
+
+```bash
+curl -X POST http://localhost:8080/v1/models/churn-predictor:predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "instances": [[45, 24, 79.99, 1920.00, 3]]
+  }'
+```
+
+```bash
+curl -X POST http://localhost:8090/v1/models/churn-predictor:predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "instances": [[69,64,30.142082844921653,2933.852650794406,7]]
+  }'
+```
 
 
 ## 🔁 GitOps with ArgoCD
@@ -153,20 +183,24 @@ kubectl get inferenceservice churn-predictor -n churn-model -w
 kubectl create namespace argocd
 
 kubectl apply -n argocd \
+  --server-side \
+  --force-conflicts \
   -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
 kubectl apply -f argocd/application.yaml
 
-kubectl port-forward svc/argocd-server -n argocd 8080:443
+kubectl port-forward svc/argocd-server -n argocd 8080:443 --address 0.0.0.0
 
 kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath="{.data.password}" | base64 -d
+  -o jsonpath="{.data.password}" | base64 -d && echo
 ```
 
 ## Add secrets in github
 images/1.add_secrets.png
 
 ## Kubectl commands
+k edit secrets s3-secret -n ml
+
 kubectl apply -f deployment.yaml
 kubectl get svc
 kubectl describe po PODName -n namespace
