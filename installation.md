@@ -227,4 +227,5 @@ ubuntu@ip-172-31-30-0:~$
 - if Error while replacing the inferance.yaml
 yq e '.metadata.labels."model-version" = env(MODEL_VERSION)' -i k8s/inference.yaml
 
+git add . ; git commit -m "update pipeline" ; git push origin main
 

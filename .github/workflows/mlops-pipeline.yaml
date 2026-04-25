@@ -75,10 +75,10 @@ jobs:
         MODEL_URI="s3://${{ env.S3_BUCKET }}/models/$MODEL_NAME"
 
         # update storageUri
-        sed -i "s|storageUri: .*|storageUri: $MODEL_URI|g" k8s/inference.yaml
+        sed -i "s|storageUri: .*|storageUri: $MODEL_URI|g" k8s/2.inference.yaml
 
         # update model version label
-        sed -i "s|model-version: .*|model-version: \"$MODEL_VERSION\"|g" k8s/inference.yaml
+        sed -i "s|model-version: .*|model-version: \"$MODEL_VERSION\"|g" k8s/2.inference.yaml
 
     # 11. Commit changes
     - name: Commit updated inference.yaml
@@ -86,7 +86,7 @@ jobs:
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
 
-        git add k8s/inference.yaml
+        git add k8s/2.inference.yaml
 
         git commit -m "Update model version ${MODEL_VERSION} [skip ci]" || echo "No changes"
 
