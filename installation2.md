@@ -186,6 +186,7 @@ if you get an error here check just wait for a minute and try again or check tro
 k create ns ml
 kubectl apply -f k8s/1.serviceaccount.yaml
 kubectl apply -f k8s/2.inference.yaml
+kubectl apply -f k8s/3.secret.yaml
 ```
 
 ```bash
@@ -272,6 +273,64 @@ kubectl get svc
 kubectl describe po PODName -n namespace
 kubectl port-forward svc/flask-service 8080:80 --address 0.0.0.0
 ```
+---
+## Scaling
+#Metric server Installation
+
+```bash
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+
+kubectl patch deployment metrics-server -n kube-system \
+--type='json' -p='[
+{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--kubelet-insecure-tls"}
+]'
+
+kubectl get pods -n kube-system | grep metrics-server
+kubectl top pods -n ml
+
+kubectl get hpa -n ml -w
+```
+
+
+
+```yaml
+apiVersion: serving.kserve.io/v1beta1
+kind: InferenceService
+metadata:
+  name: churn-predictor
+  namespace: ml
+  labels:
+    model-version: "bea99c0"
+  annotations:
+    serving.kserve.io/deploymentMode: Standard   # Use K8s Deployment + HPA
+    serving.kserve.io/autoscalerClass: hpa       # Enable HPA
+
+spec:
+  predictor:
+    serviceAccountName: sa-s3-access
+
+    # HPA Config
+    minReplicas: 1
+    maxReplicas: 5              # allow scaling >1
+    scaleMetric: cpu            # CPU based scaling
+    scaleTarget: 20             # LOW threshold for POC (easy trigger)
+
+    sklearn:
+      storageUri: s3://mlops123-299029453147-us-east-1-an/models/churn_model-bea99c0.pkl
+
+      resources:
+        requests:
+          cpu: "5m"            
+          memory: "128Mi"
+        limits:
+          cpu: "500m"
+          memory: "512Mi"
+```
+
+#load
+```bash
+while true; do   for i in {1..200}; do     curl -s -X POST http://localhost:8080/v1/models/churn-predictor:predict     -H "Content-Type: application/json"     -d '{"instances": [[45,24,79.99,1920,3]]}' &   done;   wait; done
+```
 
 ---
 
@@ -305,6 +364,23 @@ kserve-controller-manager-7f7b6d54df-j8j8f   1/2     Running   0          8s
 kserve-controller-manager-7f7b6d54df-j8j8f   2/2     Running   0          38s
 
 
+NAME                        REFERENCE                              TARGETS       MINPODS   MAXPODS   REPLICAS   AGE
+churn-predictor-predictor   Deployment/churn-predictor-predictor   cpu: 1%/20%   1         5         1          9m59s
+churn-predictor-predictor   Deployment/churn-predictor-predictor   cpu: <unknown>/20%   1         5         1          10m
+churn-predictor-predictor   Deployment/churn-predictor-predictor   cpu: 60%/20%         1         5         1          11m
+churn-predictor-predictor   Deployment/churn-predictor-predictor   cpu: 60%/20%         1         5         3          11m
+
+# to understand
+cpu: 1%/20% 
+CURRENT_CPU_UTILIZATION / TARGET_CPU_UTILIZATION
+20% is the target (threshold you configured)
+
+HPA formula
+CPU % = (current CPU usage / requested CPU) × 100
+
+cpu: 40%/20%
+👉 40% = average CPU across ALL pods (not one pod)
+👉 20% = target average CPU across ALL pods
 ```
 ---
 
