@@ -96,6 +96,110 @@ churn-model/
 
 ---
 
+## 🧠 Simple Explanation (No confusion)
+
+### 🔹 Step 1: What is `X` and `y`
+
+```python
+X = df[features]
+y = df['churn']
+```
+
+* **X** → Input data (features)
+
+  * age, tenure, charges etc.
+* **y** → Output (what you want to predict)
+
+  * churn (Yes/No)
+
+👉 Think:
+
+* X = Questions
+* y = Answers
+
+---
+
+# 🔹 Step 2: Train vs Test
+
+```python
+train_test_split(X, y, test_size=0.2)
+```
+
+👉 Splits data into 2 parts:
+
+| Type  | Purpose           |
+| ----- | ----------------- |
+| Train | Learn             |
+| Test  | Check performance |
+
+👉 Example:
+
+* 80% → Train
+* 20% → Test ([Real Python][1])
+
+---
+
+# 🔥 Final Variables (Main Part)
+
+## 🟢 X_train
+
+* Input data used to **train model**
+* Model learns patterns from this
+
+---
+
+## 🟢 y_train
+
+* Correct answers for training data
+* Helps model learn what is right
+
+👉 Together:
+
+```text
+X_train + y_train → teaching the model
+```
+
+---
+
+## 🔵 X_test
+
+* New unseen input data
+* Model will try to predict on this
+
+---
+
+## 🔵 y_test
+
+* Actual correct answers for test data
+* Used to check accuracy
+
+👉 Together:
+
+```text
+X_test + y_test → exam for model
+```
+
+---
+
+# 🧠 Easy Analogy (Best way to remember)
+
+| Concept | Real Life          |
+| ------- | ------------------ |
+| X_train | Practice questions |
+| y_train | Answer sheet       |
+| X_test  | Exam questions     |
+| y_test  | Exam answer key    |
+
+👉 Model:
+
+* Learns from practice
+* Tested in exam
+
+
+---
+
+
+
 ## ⚙️ MLOps Pipeline
 
 ### 1️⃣ Initial Setup
