@@ -1,5 +1,3 @@
----
-
 # 🚀 Churn Model MLOps
 
 A compact, end-to-end example demonstrating how to apply **MLOps principles** for building and serving a customer churn prediction model.
@@ -101,7 +99,7 @@ churn-model/
 ### 1️⃣ Initial Setup
 
 ```bash
-pip install -r requirements.txt
+uv install -r requirements.txt
 
 python generate_data.py
 python train.py
@@ -109,164 +107,6 @@ python train.py
 python api.py
 # Open: http://localhost:8000/docs
 ```
-
----
-
-### 2️⃣ DVC (Data Version Control)
-
-```bash
-dvc init
-
-dvc remote add -d myremote s3://my-bucket/churn-model
-dvc remote list
-
-dvc add models/churn_model.pkl
-dvc push
-
-git add models/churn_model.pkl.dvc .dvc/ .gitignore
-git commit -m "Track model with DVC"
-```
-
----
-
-### 3️⃣ Upload Model to S3
-
-```bash
-export AWS_ACCESS_KEY_ID=your-key
-export AWS_SECRET_ACCESS_KEY=your-secret
-export AWS_DEFAULT_REGION=us-east-1
-
-aws s3 mb s3://my-bucket
-
-dvc push
-
-aws s3 ls s3://my-bucket/churn-model/models/ --recursive
-```
-
-📌 Model path:
-
-```
-s3://my-bucket/churn-model/models/churn_model.pkl
-```
-
----
-
-### 4️⃣ S3 Usage
-
-S3 acts as the **remote storage backend** for DVC-managed models.
-
----
-
-### 5️⃣ Kubernetes (KIND)
-
-```bash
-kind create cluster --name churn-model
-```
-
----
-
-### 6️⃣ KServe Deployment
-
-```bash
-kubectl apply -f https://github.com/kserve/kserve/releases/download/v0.11.0/kserve.yaml
-
-kubectl apply -f k8s/serviceaccount.yaml
-kubectl apply -f k8s/inference.yaml
-
-kubectl get inferenceservice -n churn-model
-kubectl get inferenceservice churn-predictor -n churn-model -w
-```
-
-⚠️ Ensure AWS credentials are updated in `serviceaccount.yaml`.
-
----
-
-### 7️⃣ Test Inference
-
-```bash
-kubectl port-forward -n churn-model service/churn-predictor-predictor-default 8080:80
-```
-
-```bash
-curl -X POST http://localhost:8080/v1/models/churn-predictor:predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "instances": [[45, 24, 79.99, 1920.00, 3]]
-  }'
-```
-
-```bash
-curl -X POST http://localhost:8090/v1/models/churn-predictor:predict \
-  -H "Content-Type: application/json" \
-  -d '{
-    "instances": [[69,64,30.142082844921653,2933.852650794406,7]]
-  }'
-```
-
----
-
-### ✅ Expected Response
-
-```json
-{
-  "predictions": [1]
-}
-```
-
----
-
-## 🔄 CI/CD with GitHub Actions
-
-### 🔐 Required Secrets
-
-* `AWS_ACCESS_KEY_ID`
-* `AWS_SECRET_ACCESS_KEY`
-
-### ⚙️ Pipeline Flow
-
-1. Code pushed to GitHub
-2. Workflow triggers:
-
-   * Data generation
-   * Model training
-   * DVC push to S3
-   * Docker build
-   * Push to ECR
-   * Update `inference.yaml`
-3. Commit triggers ArgoCD
-
----
-
-## 🔁 GitOps with ArgoCD
-
-```bash
-kubectl create namespace argocd
-
-kubectl apply -n argocd \
-  -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-kubectl apply -f argocd/application.yaml
-
-kubectl port-forward svc/argocd-server -n argocd 8080:443
-
-kubectl -n argocd get secret argocd-initial-admin-secret \
-  -o jsonpath="{.data.password}" | base64 -d
-```
-
----
-
-## 🔄 End-to-End Workflow
-
-1. Developer pushes code
-2. CI pipeline runs:
-
-   * Train model
-   * Push model to S3
-   * Build & push Docker image
-   * Update manifests
-3. ArgoCD detects changes
-4. Kubernetes deployment updated
-5. KServe serves latest model
 
 ---
 
@@ -294,26 +134,21 @@ curl -X POST http://localhost:8000/predict \
   "churn_probability": 0.73
 }
 ```
+### ✅ What does `churn: 1` mean?
 
----
+* Your model is doing **binary classification**
 
-## 🧩 Core Components
+  * `1` → Customer **will churn (leave)**
+  * `0` → Customer **will NOT churn**
+* This is standard in churn ML models
 
-* **DVC** → Versioning for data & models
-* **S3** → Remote storage backend
-* **KServe** → Model serving on Kubernetes
-* **KIND** → Local cluster for testing
-* **GitHub Actions** → CI/CD automation
-* **ArgoCD** → GitOps deployment
+👉 So:
 
----
+```
+"churn": 1
+```
 
-## ⚠️ Notes
-
-* Replace `your-registry` with your container registry
-* Replace `your-org` with your GitHub org
-* Replace `my-bucket` with your S3 bucket
-* This is a **demo setup** — production requires monitoring, logging, and security enhancements
+➡️ Model predicts this customer is **likely to leave**
 
 ---
 
