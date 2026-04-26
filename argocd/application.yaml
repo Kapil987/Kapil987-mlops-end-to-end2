@@ -10,6 +10,9 @@ spec:
     repoURL: https://github.com/Kapil987/Kapil987-mlops-end-to-end2.git
     targetRevision: main
     path: k8s
+    # Add the directory block to exclude the secret file
+    directory:
+      exclude: '3.secret.yml'
 
   destination:
     server: https://kubernetes.default.svc

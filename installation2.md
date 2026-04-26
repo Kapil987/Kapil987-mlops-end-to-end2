@@ -177,12 +177,13 @@ helm upgrade --install kserve oci://ghcr.io/kserve/charts/kserve \
 
 kubectl get pods -n kserve -w
 ```
-
+if you get an error here check just wait for a minute and try again or check troubleshooting section
 ---
 
 ## 🚀 KServe Deployment
 
 ```bash
+k create ns ml
 kubectl apply -f k8s/1.serviceaccount.yaml
 kubectl apply -f k8s/2.inference.yaml
 ```
@@ -211,7 +212,7 @@ kubectl port-forward -n ml service/churn-predictor-predictor 8080:80 --address 0
 
 
 ```bash
-curl -X POST http://localhost:8080/v1/models/churn-predictor:predict \
+curl -X POST http://localhost:8090/v1/models/churn-predictor:predict \
   -H "Content-Type: application/json" \
   -d '{
     "instances": [[45, 24, 79.99, 1920.00, 3]]
@@ -296,7 +297,14 @@ Error: Internal error occurred: failed calling webhook "clusterservingruntime.ks
 Internal error occurred: failed calling webhook "clusterservingruntime.kserve-webhook-server.validator": failed to call webhook: Post "https://kserve-webhook-server-service.kserve.svc:443/validate-serving-kserve-io-v1alpha1-clusterservingruntime?timeout=10s": dial tcp 10.96.133.27:443: connect: connection refused
 Internal error occurred: failed calling webhook "clusterservingruntime.kserve-webhook-server.validator": failed to call webhook: Post "https://kserve-webhook-server-service.kserve.svc:443/validate-serving-kserve-io-v1alpha1-clusterservingruntime?timeout=10s": dial tcp 10.96.133.27:443: connect: connection refused
 ubuntu@ip-172-31-30-0:~$
-👉 Solution: wait 1 minute and retry
+👉 Solution: wait untile you get 2/2 for below and retry
+
+ubuntu@ip-172-31-19-109:~$ kubectl get pods -n kserve -w
+NAME                                         READY   STATUS    RESTARTS   AGE
+kserve-controller-manager-7f7b6d54df-j8j8f   1/2     Running   0          8s
+kserve-controller-manager-7f7b6d54df-j8j8f   2/2     Running   0          38s
+
+
 ```
 ---
 
